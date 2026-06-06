@@ -1,0 +1,1045 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf8f2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Music Reader">
+  <title>Sheet Music Reader</title>
+  <style>
+    :root {
+      --ink: #171717;
+      --muted: #666;
+      --paper: #faf8f2;
+      --line: #222;
+      --accent: #2d6cdf;
+      --good: #1f8f4d;
+      --slow: #b7791f;
+      --bad: #b42318;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      min-height: 100svh;
+      padding: 18px 14px 28px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      font-size: 24px;
+      line-height: 1.1;
+      margin: 0 0 6px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .score {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-size: 14px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .score strong {
+      display: block;
+      color: var(--ink);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .stage {
+      background: #fffdf7;
+      border: 1px solid #ded8c8;
+      border-radius: 8px;
+      padding: 18px;
+    }
+
+    .staff-wrap {
+      padding: 0 0 12px;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin: 16px 0;
+      flex-wrap: wrap;
+    }
+
+    .track-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 0 0 14px;
+    }
+
+    .track-tab {
+      min-height: 44px;
+      font-weight: 700;
+    }
+
+    .track-tab.active {
+      border-color: var(--accent);
+      background: #eaf1ff;
+      color: #164ca8;
+    }
+
+    .track-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin: -6px 0 12px;
+    }
+
+    .mode-help {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .mode-help div {
+      border: 1px solid #ded8c8;
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: #fffdf7;
+    }
+
+    .mode-help strong {
+      display: block;
+      color: var(--ink);
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+
+    .secondary-action {
+      min-height: 36px;
+      font-size: 13px;
+      color: var(--muted);
+      background: #fffdf7;
+    }
+
+    .status {
+      min-height: 24px;
+      font-size: 16px;
+      font-weight: 650;
+    }
+
+    .status.good { color: var(--good); }
+    .status.slow { color: var(--slow); }
+    .status.bad { color: var(--bad); }
+
+    button {
+      border: 1px solid #c9c1ae;
+      background: #fff;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 9px 12px;
+      font: inherit;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:hover { border-color: var(--accent); }
+
+    .keyboard {
+      width: min(100%, 414px);
+      margin: 0 auto;
+      overflow-x: hidden;
+      padding: 0 0 8px;
+    }
+
+    .piano {
+      position: relative;
+      height: clamp(190px, 34svh, 250px);
+      user-select: none;
+      width: 100%;
+    }
+
+    .white-keys {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      height: 100%;
+      border: 1px solid #111;
+      background: #111;
+      gap: 1px;
+      width: 100%;
+    }
+
+    .white-key {
+      position: relative;
+      background: #fff;
+      border: 0;
+      border-radius: 0 0 5px 5px;
+      padding: 0;
+      min-width: 0;
+    }
+
+    .white-key.active { background: #dce9ff; }
+    .white-key.correct { background: #dff5e8; }
+    .white-key.slow { background: #fff0c2; }
+    .white-key.wrong { background: #ffe1df; }
+
+    .black-key {
+      position: absolute;
+      top: 0;
+      width: 26px;
+      height: 61%;
+      background: #111;
+      border: 1px solid #000;
+      border-radius: 0 0 4px 4px;
+      z-index: 2;
+      padding: 0;
+    }
+
+    .black-key.active { background: #2d6cdf; }
+    .black-key.correct { background: #1f8f4d; }
+    .black-key.slow { background: #b7791f; }
+    .black-key.wrong { background: #b42318; }
+
+    .legend {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .song-panel {
+      margin-top: 16px;
+      background: #fffdf7;
+      border: 1px solid #ded8c8;
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .song-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .song-title {
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .song-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .song-wrap svg {
+      min-width: 720px;
+    }
+
+    .song-notes {
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+      @media (max-width: 640px) {
+      main { padding: 12px 10px 18px; }
+      header {
+        align-items: start;
+        margin-bottom: 10px;
+      }
+      h1 { font-size: 20px; }
+      p { font-size: 13px; }
+      .score strong { font-size: 24px; }
+      .stage {
+        padding: 12px;
+        border-radius: 7px;
+      }
+      .controls {
+        margin: 10px 0 14px;
+      }
+      .mode-help {
+        grid-template-columns: 1fr;
+      }
+      .status {
+        flex: 1 1 100%;
+        font-size: 15px;
+      }
+      #next {
+        width: 100%;
+        min-height: 44px;
+      }
+      .legend { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Sheet Music Reader</h1>
+        <p>Practice reading notes on a simple piano keyboard. No app install, no ads.</p>
+      </div>
+      <div class="score">
+        Level <span id="levelLabel">1</span>
+        <strong id="score">0/10</strong>
+      </div>
+    </header>
+
+    <section class="stage" aria-label="Music reading test">
+      <div class="track-tabs" aria-label="Training track">
+        <button id="easyTrack" class="track-tab active" type="button">Easy Practice</button>
+        <button id="progressTrack" class="track-tab" type="button">Progressive Test</button>
+      </div>
+      <div class="track-actions">
+        <button id="resetProgress" class="secondary-action" type="button">Restart progress</button>
+      </div>
+      <div class="mode-help" aria-label="Mode guide">
+        <div><strong>Easy Practice</strong>Repeat basic notes without pressure.</div>
+        <div><strong>Progressive Test</strong>Pass accurate, quick rounds to unlock harder material.</div>
+        <div><strong>Song Practice</strong>Try a short melody from your current level.</div>
+      </div>
+
+      <div class="staff-wrap">
+        <svg viewBox="0 0 820 285" role="img" aria-labelledby="staffTitle">
+          <title id="staffTitle">Treble clef staff with one note to identify</title>
+          <g stroke="var(--line)" stroke-width="2">
+            <line x1="110" y1="70" x2="760" y2="70"></line>
+            <line x1="110" y1="95" x2="760" y2="95"></line>
+            <line x1="110" y1="120" x2="760" y2="120"></line>
+            <line x1="110" y1="145" x2="760" y2="145"></line>
+            <line x1="110" y1="170" x2="760" y2="170"></line>
+          </g>
+          <text id="clefSymbol" x="34" y="169" font-size="118" font-family="Georgia, 'Times New Roman', serif">𝄞</text>
+          <text x="122" y="52" font-size="24" font-family="Georgia, serif">4</text>
+          <text x="122" y="78" font-size="24" font-family="Georgia, serif">4</text>
+          <g id="ledger" stroke="var(--line)" stroke-width="2"></g>
+          <ellipse id="noteHead" cx="380" cy="120" rx="20" ry="14" fill="var(--ink)" transform="rotate(-18 380 120)"></ellipse>
+          <line id="stem" x1="397" y1="117" x2="397" y2="55" stroke="var(--ink)" stroke-width="4"></line>
+        </svg>
+      </div>
+
+      <div class="controls">
+        <div id="status" class="status">Click the key for this note.</div>
+        <button id="next" type="button">New round</button>
+      </div>
+
+      <div class="keyboard" aria-label="Piano keyboard">
+        <div class="piano" id="piano">
+          <div class="white-keys" id="whiteKeys"></div>
+          <div id="blackKeys"></div>
+        </div>
+      </div>
+      <div class="legend" id="legend">Level 1 range: treble clef middle C through the next C. White keys only for this test.</div>
+    </section>
+
+    <section class="song-panel" aria-label="Song practice">
+      <div class="song-head">
+        <div>
+          <div class="song-title">Song Practice</div>
+          <p id="songHint">A short melody using notes from your current track.</p>
+        </div>
+        <button id="newSong" type="button">New song</button>
+      </div>
+      <div class="song-wrap">
+        <svg id="songSvg" viewBox="0 0 920 250" role="img" aria-label="Short practice melody"></svg>
+      </div>
+      <div id="songNotes" class="song-notes"></div>
+    </section>
+  </main>
+
+  <script>
+    const notes = [
+      { id: "C2", clef: "bass", staffY: 220, ledger: [195, 220], stem: "up" },
+      { id: "D2", clef: "bass", staffY: 207.5, ledger: [195], stem: "up" },
+      { id: "E2", clef: "bass", staffY: 195, ledger: [195], stem: "up" },
+      { id: "F2", clef: "bass", staffY: 182.5, ledger: [], stem: "up" },
+      { id: "G2", clef: "bass", staffY: 170, ledger: [], stem: "up" },
+      { id: "A2", clef: "bass", staffY: 157.5, ledger: [], stem: "up" },
+      { id: "B2", clef: "bass", staffY: 145, ledger: [], stem: "up" },
+      { id: "C3", clef: "bass", staffY: 132.5, ledger: [], stem: "up" },
+      { id: "D3", clef: "bass", staffY: 120, ledger: [], stem: "down" },
+      { id: "E3", clef: "bass", staffY: 107.5, ledger: [], stem: "down" },
+      { id: "F3", clef: "bass", staffY: 95, ledger: [], stem: "down" },
+      { id: "G3", clef: "bass", staffY: 82.5, ledger: [], stem: "down" },
+      { id: "A3", clef: "bass", staffY: 70, ledger: [], stem: "down" },
+      { id: "B3", clef: "bass", staffY: 57.5, ledger: [], stem: "down" },
+      { id: "C4", clef: "treble", staffY: 195, ledger: [195], stem: "up" },
+      { id: "D4", clef: "treble", staffY: 182.5, ledger: [], stem: "up" },
+      { id: "E4", clef: "treble", staffY: 170, ledger: [], stem: "up" },
+      { id: "F4", clef: "treble", staffY: 157.5, ledger: [], stem: "up" },
+      { id: "G4", clef: "treble", staffY: 145, ledger: [], stem: "up" },
+      { id: "A4", clef: "treble", staffY: 132.5, ledger: [], stem: "up" },
+      { id: "B4", clef: "treble", staffY: 120, ledger: [], stem: "up" },
+      { id: "C5", clef: "treble", staffY: 107.5, ledger: [], stem: "down" },
+      { id: "D5", clef: "treble", staffY: 95, ledger: [], stem: "down" },
+      { id: "E5", clef: "treble", staffY: 82.5, ledger: [], stem: "down" },
+      { id: "F5", clef: "treble", staffY: 70, ledger: [], stem: "down" },
+      { id: "G5", clef: "treble", staffY: 57.5, ledger: [], stem: "down" },
+      { id: "A5", clef: "treble", staffY: 45, ledger: [45], stem: "down" },
+      { id: "B5", clef: "treble", staffY: 32.5, ledger: [45], stem: "down" },
+      { id: "C6", clef: "treble", staffY: 20, ledger: [45, 20], stem: "down" }
+    ];
+
+    function makeAccidentalNote(baseId, accidental) {
+      const base = notes.find((note) => note.id === baseId);
+      const [, letter, octave] = baseId.match(/^([A-G])(\d)$/);
+      return {
+        ...base,
+        id: `${letter}${accidental}${octave}`,
+        accidental
+      };
+    }
+
+    const sharpBaseIds = [
+      "C2","D2","F2","G2","A2","C3","D3","F3","G3","A3",
+      "C4","D4","F4","G4","A4","C5","D5","F5","G5","A5"
+    ];
+    const flatBaseIds = [
+      "D2","E2","G2","A2","B2","D3","E3","G3","A3","B3",
+      "D4","E4","G4","A4","B4","D5","E5","G5","A5","B5"
+    ];
+    const accidentalNotes = [
+      ...sharpBaseIds.map((id) => makeAccidentalNote(id, "#")),
+      ...flatBaseIds.map((id) => makeAccidentalNote(id, "b"))
+    ];
+    const allNotes = [...notes, ...accidentalNotes];
+    const noteById = Object.fromEntries(allNotes.map((note) => [note.id, note]));
+    const bassC2C3 = ["C2","D2","E2","F2","G2","A2","B2","C3"];
+    const bassC2C4 = ["C2","D2","E2","F2","G2","A2","B2","C3","D3","E3","F3","G3","A3","B3"];
+    const trebleC4C5 = ["C4","D4","E4","F4","G4","A4","B4","C5"];
+    const trebleC4G5 = ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5","F5","G5"];
+    const trebleC4A5 = ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5","F5","G5","A5"];
+    const upperTrebleC5C6 = ["C5","D5","E5","F5","G5","A5","B5","C6"];
+    const fullTrebleRange = ["C4","D4","E4","F4","G4","A4","B4","C5","D5","E5","F5","G5","A5","B5","C6"];
+    const trebleBassRange = [...bassC2C4, ...fullTrebleRange];
+    const keyboardScale = ["C","D","E","F","G","A","B"];
+    const blackKeyboardKeys = [
+      { after: "C", pitch: "C#", label: "C#\nDb" },
+      { after: "D", pitch: "D#", label: "D#\nEb" },
+      { after: "F", pitch: "F#", label: "F#\nGb" },
+      { after: "G", pitch: "G#", label: "G#\nAb" },
+      { after: "A", pitch: "A#", label: "A#\nBb" }
+    ];
+    const blackKeyByWhite = Object.fromEntries(blackKeyboardKeys.map((key) => [key.after, key]));
+    const trebleBassAccidentals = accidentalNotes.map((note) => note.id);
+
+    const intervalItems = [
+      ["C2","E2"], ["D2","F2"], ["E2","G2"], ["F2","A2"], ["G2","B2"], ["A2","C3"],
+      ["C4","E4"], ["D4","F4"], ["E4","G4"], ["F4","A4"], ["G4","B4"], ["A4","C5"],
+      ["C5","E5"], ["D5","F5"], ["E5","G5"], ["F5","A5"], ["G5","B5"], ["A5","C6"]
+    ];
+
+    const chordItems = [
+      ["C2","E2","G2"], ["F2","A2","C3"], ["G2","B2","D3"],
+      ["C4","E4","G4"], ["D4","F4","A4"], ["E4","G4","B4"], ["F4","A4","C5"],
+      ["G4","B4","D5"], ["A4","C5","E5"], ["C5","E5","G5"], ["D5","F5","A5"],
+      ["E5","G5","B5"], ["F5","A5","C6"]
+    ];
+
+    function uniqueNotes(items) {
+      return [...new Set(items.flatMap((item) => Array.isArray(item) ? item : [item]))];
+    }
+
+    const levels = [
+      {
+        number: 1,
+        name: "Treble C4-C5",
+        notes: trebleC4C5,
+        passScore: 8,
+        legend: "Level 1 range: treble clef middle C through the next C. White keys only for this test."
+      },
+      {
+        number: 2,
+        name: "Treble C4-G5",
+        notes: trebleC4G5,
+        passScore: 8,
+        legend: "Level 2 range: treble clef middle C through high G. Watch the upper staff lines."
+      },
+      {
+        number: 3,
+        name: "Treble C4-A5",
+        notes: trebleC4A5,
+        passScore: 9,
+        legend: "Level 3 range: treble clef middle C through high A. Passing requires 9/10."
+      },
+      {
+        number: 4,
+        name: "Upper Treble C5-C6",
+        notes: upperTrebleC5C6,
+        passScore: 8,
+        legend: "Level 4 range: upper treble C5 through C6. Focus on the top staff lines and ledger C."
+      },
+      {
+        number: 5,
+        name: "Bass C2-C3",
+        notes: bassC2C3,
+        passScore: 8,
+        legend: "Level 5 range: bass clef C2 through C3. Focus on base notes in the left-hand register."
+      },
+      {
+        number: 6,
+        name: "Bass C2-B3",
+        notes: bassC2C4,
+        passScore: 8,
+        legend: "Level 6 range: bass clef C2 through B3. Read base notes across the bass staff."
+      },
+      {
+        number: 7,
+        name: "Treble + Bass",
+        notes: trebleBassRange,
+        passScore: 8,
+        legend: "Level 7 mixes treble C4-C6 and bass C2-B3. Watch the clef before choosing the key."
+      },
+      {
+        number: 8,
+        name: "Treble + Bass Mastery",
+        notes: trebleBassRange,
+        passScore: 9,
+        legend: "Level 8 mastery: mixed treble and bass single notes. Passing requires 9/10."
+      }
+    ];
+
+    for (let number = 9; number <= 50; number += 1) {
+      const includeAccidentals = number >= 10;
+      const includeIntervals = number >= 16;
+      const includeChords = number >= 20;
+      const includeWideChords = number >= 28;
+      const items = [
+        ...trebleBassRange,
+        ...(includeIntervals ? intervalItems : []),
+        ...(includeAccidentals ? trebleBassAccidentals : []),
+        ...(includeChords ? chordItems.slice(0, includeWideChords ? chordItems.length : 6) : [])
+      ];
+      const roundSize = number < 15 ? 12 : number < 30 ? 15 : 20;
+      const passScore = Math.ceil(roundSize * (number < 20 ? 0.85 : number < 40 ? 0.9 : 0.95));
+      levels.push({
+        number,
+        name: includeChords ? `Treble/Bass Chords ${number}` : includeIntervals ? `Treble/Bass Intervals ${number}` : includeAccidentals ? `Treble/Bass Accidentals ${number}` : `Treble/Bass Mastery ${number}`,
+        notes: uniqueNotes(items),
+        items,
+        roundSize,
+        passScore,
+        legend: includeChords
+          ? `Level ${number}: mixed treble/bass with single notes, intervals, and ${includeWideChords ? "wide " : ""}3-note chords. ${roundSize}-item round, pass ${passScore}/${roundSize}.`
+          : includeAccidentals
+            ? `Level ${number}: mixed treble/bass single notes with sharps/flats. ${roundSize}-note round, pass ${passScore}/${roundSize}.`
+            : includeIntervals
+            ? `Level ${number}: mixed treble/bass with single notes and 2-note intervals. ${roundSize}-item round, pass ${passScore}/${roundSize}.`
+            : `Level ${number}: mixed treble/bass single notes. ${roundSize}-note round, pass ${passScore}/${roundSize}.`
+      });
+    }
+
+    const tracks = {
+      easy: {
+        label: "Easy",
+        levelIndex: 0,
+        fixed: true,
+        legend: "Easy Practice: one shared C major keyboard. Notes with the same letter use the same key."
+      },
+      progressive: {
+        label: "Progressive",
+        levelIndex: 0,
+        fixed: false
+      }
+    };
+
+    const savedProgressLevel = Number.parseInt(localStorage.getItem("sheetMusicProgressLevelIndex") || "0", 10);
+    if (Number.isInteger(savedProgressLevel) && savedProgressLevel >= 0 && savedProgressLevel < levels.length) {
+      tracks.progressive.levelIndex = savedProgressLevel;
+    }
+
+    let activeTrack = "easy";
+    let levelIndex = tracks[activeTrack].levelIndex;
+    let testNotes = levels[levelIndex].items || levels[levelIndex].notes;
+
+    const whiteKeys = document.getElementById("whiteKeys");
+    const blackKeys = document.getElementById("blackKeys");
+    const piano = document.getElementById("piano");
+    const noteHead = document.getElementById("noteHead");
+    const stem = document.getElementById("stem");
+    const ledger = document.getElementById("ledger");
+    const scoreEl = document.getElementById("score");
+    const levelLabel = document.getElementById("levelLabel");
+    const statusEl = document.getElementById("status");
+    const nextBtn = document.getElementById("next");
+    const legend = document.getElementById("legend");
+    const easyTrack = document.getElementById("easyTrack");
+    const progressTrack = document.getElementById("progressTrack");
+    const resetProgress = document.getElementById("resetProgress");
+    const newSong = document.getElementById("newSong");
+    const songSvg = document.getElementById("songSvg");
+    const songNotes = document.getElementById("songNotes");
+    const songHint = document.getElementById("songHint");
+
+    let current = null;
+    let total = 0;
+    let correct = 0;
+    let answered = false;
+    let roundOver = false;
+    let selectedNotes = new Set();
+    let itemStartedAt = 0;
+    let totalResponseMs = 0;
+    let slowResponses = 0;
+    let verySlowResponses = 0;
+    const misses = Object.fromEntries(allNotes.map((note) => [note.id, 0]));
+
+    function noteName(id) {
+      return id.match(/^[A-G][#b]?/)?.[0] || id;
+    }
+
+    function pitchClass(id) {
+      const name = noteName(id);
+      const flatToSharp = {
+        Db: "C#",
+        Eb: "D#",
+        Gb: "F#",
+        Ab: "G#",
+        Bb: "A#"
+      };
+      return flatToSharp[name] || name;
+    }
+
+    function noteNames(ids) {
+      return ids.map(pitchClass);
+    }
+
+    function keyboardKeyForNote(noteId) {
+      return document.querySelector(`[data-note-name="${pitchClass(noteId)}"]`);
+    }
+
+    function renderKeyboard() {
+      whiteKeys.innerHTML = "";
+      blackKeys.innerHTML = "";
+
+      const ids = keyboardScale;
+      ids.forEach((id) => {
+        const key = document.createElement("button");
+        key.className = "white-key";
+        key.type = "button";
+        key.dataset.noteName = id;
+        key.setAttribute("aria-label", id);
+        key.addEventListener("click", () => answer(id, key));
+        whiteKeys.appendChild(key);
+      });
+
+      const whiteKeyEls = [...whiteKeys.querySelectorAll(".white-key")];
+      ids.slice(0, -1).forEach((id, index) => {
+        const blackKey = blackKeyByWhite[id];
+        if (!blackKey) return;
+        const currentWhite = whiteKeyEls[index];
+        const nextWhite = whiteKeyEls[index + 1];
+        const blackKeyWidth = Math.max(18, Math.round(currentWhite.offsetWidth * 0.45));
+        const boundary = (currentWhite.offsetLeft + currentWhite.offsetWidth + nextWhite.offsetLeft) / 2;
+        const key = document.createElement("button");
+        key.className = "black-key";
+        key.type = "button";
+        key.dataset.noteName = blackKey.pitch;
+        key.setAttribute("aria-label", blackKey.label.replace("\n", " or "));
+        key.addEventListener("click", () => answer(blackKey.pitch, key));
+        key.style.width = `${blackKeyWidth}px`;
+        key.style.left = `${boundary - (blackKeyWidth / 2)}px`;
+        blackKeys.appendChild(key);
+      });
+    }
+
+    function makeSvg(tag, attrs = {}) {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value));
+      return el;
+    }
+
+    function drawAccidental(parent, note, x) {
+      if (!note.accidental) return;
+      const accidental = makeSvg("text", {
+        x: x - 54,
+        y: note.staffY + 11,
+        "font-size": "38",
+        "font-family": "Georgia, 'Times New Roman', serif",
+        fill: "var(--ink)"
+      });
+      accidental.textContent = note.accidental;
+      parent.appendChild(accidental);
+    }
+
+    function drawNote(parent, noteId, x) {
+      const note = noteById[noteId];
+      note.ledger.forEach((y) => {
+        parent.appendChild(makeSvg("line", {
+          x1: x - 36,
+          x2: x + 36,
+          y1: y,
+          y2: y,
+          stroke: "var(--line)",
+          "stroke-width": "2"
+        }));
+      });
+
+      drawAccidental(parent, note, x);
+
+      parent.appendChild(makeSvg("ellipse", {
+        cx: x,
+        cy: note.staffY,
+        rx: 17,
+        ry: 12,
+        fill: "var(--ink)",
+        transform: `rotate(-18 ${x} ${note.staffY})`
+      }));
+
+      if (note.stem === "down") {
+        parent.appendChild(makeSvg("line", {
+          x1: x - 15,
+          x2: x - 15,
+          y1: note.staffY + 2,
+          y2: note.staffY + 58,
+          stroke: "var(--ink)",
+          "stroke-width": "3.5"
+        }));
+      } else {
+        parent.appendChild(makeSvg("line", {
+          x1: x + 15,
+          x2: x + 15,
+          y1: note.staffY - 2,
+          y2: note.staffY - 58,
+          stroke: "var(--ink)",
+          "stroke-width": "3.5"
+        }));
+      }
+    }
+
+    function buildPracticeSong() {
+      const allowed = tracks[activeTrack].fixed
+        ? ["C4","D4","E4","F4","G4","A4","B4","C5"]
+        : levels[levelIndex].notes;
+      const basePatterns = [
+        ["C4","D4","E4","G4","E4","D4","C4","G4"],
+        ["E4","G4","A4","G4","F4","E4","D4","C4"],
+        ["G4","A4","B4","C5","B4","A4","G4","E4"],
+        ["C5","B4","A4","G4","E4","F4","G4","C5"]
+      ];
+      const pattern = basePatterns[Math.floor(Math.random() * basePatterns.length)]
+        .filter((id) => allowed.includes(id));
+      const fallback = allowed.slice(0, Math.min(8, allowed.length));
+      const melody = (pattern.length >= 6 ? pattern : fallback).slice(0, 8);
+
+      songSvg.innerHTML = "";
+      [70, 95, 120, 145, 170].forEach((y) => {
+        songSvg.appendChild(makeSvg("line", {
+          x1: 105,
+          x2: 875,
+          y1: y,
+          y2: y,
+          stroke: "var(--line)",
+          "stroke-width": "2"
+        }));
+      });
+
+      const clef = makeSvg("text", {
+        x: 32,
+        y: 169,
+        "font-size": "118",
+        "font-family": "Georgia, 'Times New Roman', serif"
+      });
+      clef.textContent = "𝄞";
+      songSvg.appendChild(clef);
+
+      const fourTop = makeSvg("text", { x: 115, y: 52, "font-size": "24", "font-family": "Georgia, serif" });
+      fourTop.textContent = "4";
+      songSvg.appendChild(fourTop);
+      const fourBottom = makeSvg("text", { x: 115, y: 78, "font-size": "24", "font-family": "Georgia, serif" });
+      fourBottom.textContent = "4";
+      songSvg.appendChild(fourBottom);
+
+      [310, 490, 670, 850].forEach((x) => {
+        songSvg.appendChild(makeSvg("line", {
+          x1: x,
+          x2: x,
+          y1: 70,
+          y2: 170,
+          stroke: "var(--line)",
+          "stroke-width": "2"
+        }));
+      });
+
+      melody.forEach((noteId, index) => drawNote(songSvg, noteId, 185 + index * 80));
+      songNotes.textContent = `Practice melody: ${melody.join(" ")}. Play slowly first, then repeat without looking at the labels.`;
+      songHint.textContent = activeTrack === "easy"
+        ? "Easy melody: only Level 1 notes."
+        : `Progress melody: uses notes unlocked up to Level ${levels[levelIndex].number}.`;
+    }
+
+    function clearKeyStates() {
+      document.querySelectorAll(".white-key").forEach((key) => {
+        key.classList.remove("active", "correct", "slow", "wrong");
+      });
+    }
+
+    function weightedPick() {
+      const pool = testNotes.flatMap((item) => {
+        const ids = Array.isArray(item) ? item : [item];
+        const weight = 1 + Math.max(...ids.map((id) => misses[id] || 0));
+        return Array(weight).fill(item);
+      });
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function currentRoundSize() {
+      return levels[levelIndex].roundSize || 10;
+    }
+
+    function pickNote() {
+      if (total >= currentRoundSize()) {
+        finishRound();
+        return;
+      }
+
+      const id = weightedPick();
+      current = Array.isArray(id) ? id : [id];
+      answered = false;
+      roundOver = false;
+      selectedNotes = new Set();
+      itemStartedAt = performance.now();
+      statusEl.textContent = current.length > 1
+        ? `Click all ${current.length} keys for this chord.`
+        : "Click the key for this note.";
+      statusEl.className = "status";
+
+      clearKeyStates();
+
+      const displayNotes = current.map((noteId) => noteById[noteId]);
+      const mainNote = displayNotes[0];
+      const clefSymbol = document.getElementById("clefSymbol");
+      clefSymbol.textContent = mainNote.clef === "bass" ? "𝄢" : "𝄞";
+      clefSymbol.setAttribute("y", mainNote.clef === "bass" ? "148" : "169");
+      noteHead.setAttribute("cy", mainNote.staffY);
+      noteHead.setAttribute("transform", `rotate(-18 380 ${mainNote.staffY})`);
+
+      if (mainNote.stem === "down") {
+        stem.setAttribute("x1", "363");
+        stem.setAttribute("x2", "363");
+        stem.setAttribute("y1", mainNote.staffY + 3);
+        stem.setAttribute("y2", mainNote.staffY + 65);
+      } else {
+        stem.setAttribute("x1", "397");
+        stem.setAttribute("x2", "397");
+        stem.setAttribute("y1", mainNote.staffY - 3);
+        stem.setAttribute("y2", mainNote.staffY - 65);
+      }
+
+      ledger.innerHTML = "";
+      displayNotes.forEach((note, index) => {
+        const x = 380 + (index % 2) * 30;
+        if (index > 0) {
+          note.ledger.forEach((y) => {
+            ledger.appendChild(makeSvg("line", {
+              x1: x - 36,
+              x2: x + 36,
+              y1: y,
+              y2: y,
+              stroke: "var(--line)",
+              "stroke-width": "2"
+            }));
+          });
+          ledger.appendChild(makeSvg("ellipse", {
+            cx: x,
+            cy: note.staffY,
+            rx: 20,
+            ry: 14,
+            fill: "var(--ink)",
+            transform: `rotate(-18 ${x} ${note.staffY})`
+          }));
+          drawAccidental(ledger, note, x);
+          return;
+        }
+        note.ledger.forEach((y) => {
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("x1", "344");
+          line.setAttribute("x2", "416");
+          line.setAttribute("y1", y);
+          line.setAttribute("y2", y);
+          ledger.appendChild(line);
+        });
+        drawAccidental(ledger, note, x);
+      });
+    }
+
+    function answer(id, key) {
+      if (answered || roundOver) return;
+      selectedNotes.add(id);
+      key.classList.add("active");
+
+      const expected = new Set(noteNames(current));
+      const selected = [...selectedNotes].map(pitchClass);
+      const hasWrong = selected.some((noteId) => !expected.has(noteId));
+      const isComplete = selected.length >= expected.size;
+      if (!hasWrong && !isComplete) {
+        statusEl.textContent = `${selected.length}/${expected.size} keys selected.`;
+        return;
+      }
+
+      answered = true;
+      total += 1;
+      const responseMs = performance.now() - itemStartedAt;
+      const responseSec = responseMs / 1000;
+      const slowLimit = 5.0;
+      const verySlowLimit = 10.0;
+      const isSlow = responseSec > slowLimit;
+      const isVerySlow = responseSec > verySlowLimit;
+      totalResponseMs += responseMs;
+      if (isSlow) slowResponses += 1;
+      if (isVerySlow) verySlowResponses += 1;
+      const isCorrect = !hasWrong && selected.length === expected.size;
+      if (isCorrect) {
+        correct += 1;
+        key.classList.add(isSlow ? "slow" : "correct");
+        current.forEach((noteId) => {
+          misses[noteId] = isSlow ? misses[noteId] + 1 : Math.max(0, misses[noteId] - 1);
+          const noteKey = keyboardKeyForNote(noteId);
+          if (noteKey) noteKey.classList.add(isSlow ? "slow" : "correct");
+        });
+        statusEl.textContent = isSlow
+          ? `Correct: ${current.join(" + ")}, but slow: ${responseSec.toFixed(1)}s.`
+          : `Correct: ${current.join(" + ")} in ${responseSec.toFixed(1)}s.`;
+        statusEl.className = isSlow ? "status slow" : "status good";
+      } else {
+        current.forEach((noteId) => {
+          misses[noteId] += 1;
+        });
+        key.classList.add("wrong");
+        current.forEach((noteId) => {
+          const rightKey = keyboardKeyForNote(noteId);
+          if (rightKey) rightKey.classList.add("correct");
+        });
+        statusEl.textContent = `Not this one. Correct: ${current.join(" + ")}. ${responseSec.toFixed(1)}s.`;
+        statusEl.className = "status bad";
+      }
+
+      scoreEl.textContent = `${correct}/${currentRoundSize()}`;
+
+      window.setTimeout(() => {
+        if (total >= currentRoundSize()) {
+          finishRound();
+        } else {
+          pickNote();
+        }
+      }, isCorrect ? 350 : 850);
+    }
+
+    function finishRound() {
+      roundOver = true;
+      answered = true;
+      const wrong = testNotes
+        .map((item) => Array.isArray(item) ? item : [item])
+        .filter((ids) => ids.some((id) => misses[id] > 0))
+        .sort((a, b) => Math.max(...b.map((id) => misses[id])) - Math.max(...a.map((id) => misses[id])))
+        .slice(0, 3);
+      const passed = correct >= levels[levelIndex].passScore;
+      const averageSec = total > 0 ? totalResponseMs / total / 1000 : 0;
+      const speedReady = slowResponses <= Math.max(1, Math.floor(total * 0.2)) && verySlowResponses === 0;
+      if (passed && speedReady && !tracks[activeTrack].fixed && levelIndex < levels.length - 1) {
+        levelIndex += 1;
+        tracks[activeTrack].levelIndex = levelIndex;
+        localStorage.setItem("sheetMusicProgressLevelIndex", String(levelIndex));
+        testNotes = levels[levelIndex].items || levels[levelIndex].notes;
+        updateLevelUi();
+        statusEl.textContent = `Passed: ${correct}/${currentRoundSize()}. Raised to Level ${levels[levelIndex].number}.`;
+        statusEl.className = "status good";
+        return;
+      }
+
+      const focus = wrong.length ? `Focus next: ${wrong.map((ids) => ids.join("+")).join(", ")}.` : "Clean round.";
+      const speedNote = `Avg ${averageSec.toFixed(1)}s, slow ${slowResponses}.`;
+      const prefix = passed
+        ? (speedReady ? (tracks[activeTrack].fixed ? "Easy round passed" : "Passed") : "Accurate but too slow")
+        : "Round complete";
+      statusEl.textContent = `${prefix}: ${correct}/${currentRoundSize()}. ${speedNote} ${focus}`;
+      statusEl.className = passed && speedReady ? "status good" : "status bad";
+    }
+
+    function updateLevelUi() {
+      const level = levels[levelIndex];
+      levelLabel.textContent = tracks[activeTrack].fixed ? "Easy" : `${level.number}`;
+      legend.textContent = tracks[activeTrack].legend || level.legend;
+      easyTrack.classList.toggle("active", activeTrack === "easy");
+      progressTrack.classList.toggle("active", activeTrack === "progressive");
+      resetProgress.hidden = activeTrack !== "progressive";
+      renderKeyboard();
+      buildPracticeSong();
+    }
+
+    function startRound() {
+      total = 0;
+      correct = 0;
+      totalResponseMs = 0;
+      slowResponses = 0;
+      verySlowResponses = 0;
+      roundOver = false;
+      scoreEl.textContent = `0/${currentRoundSize()}`;
+      updateLevelUi();
+      pickNote();
+    }
+
+    function setTrack(trackName) {
+      tracks[activeTrack].levelIndex = levelIndex;
+      if (activeTrack === "progressive") {
+        localStorage.setItem("sheetMusicProgressLevelIndex", String(levelIndex));
+      }
+      activeTrack = trackName;
+      levelIndex = tracks[activeTrack].levelIndex;
+      testNotes = levels[levelIndex].items || levels[levelIndex].notes;
+      startRound();
+    }
+
+    function restartProgress() {
+      tracks.progressive.levelIndex = 0;
+      localStorage.setItem("sheetMusicProgressLevelIndex", "0");
+      activeTrack = "progressive";
+      levelIndex = 0;
+      testNotes = levels[levelIndex].items || levels[levelIndex].notes;
+      startRound();
+      statusEl.textContent = "Progress restarted at Level 1.";
+      statusEl.className = "status";
+    }
+
+    easyTrack.addEventListener("click", () => setTrack("easy"));
+    progressTrack.addEventListener("click", () => setTrack("progressive"));
+    resetProgress.addEventListener("click", restartProgress);
+    newSong.addEventListener("click", buildPracticeSong);
+    nextBtn.addEventListener("click", startRound);
+    window.addEventListener("resize", renderKeyboard);
+    startRound();
+  </script>
+</body>
+</html>
